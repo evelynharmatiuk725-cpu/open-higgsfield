@@ -38,7 +38,19 @@ export async function submitGeneration(plane: GenerationPlane) {
     settings: parseSettings(model, plane.settings),
   };
   const { path, body } = toPlatform(parsed);
-  return createPlatformClient(await readCredentials()).submit(path, body);
+  try {
+    return await createPlatformClient(await readCredentials()).submit(path, body);
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    if (message.includes("not_enough_credits")) {
+      return { error: "Saldo insuficiente na Higgsfield API. Adicione créditos no painel da Higgsfield antes de gerar." };
+    }
+    return { error: message === "Missing platform key"
+      ? "Adicione sua chave da Higgsfield API para gerar."
+      : message === "Missing HF_API_BASE_URL"
+        ? "O endereço da Higgsfield API não está configurado."
+        : "A geração falhou. Confira sua chave, saldo e configurações do modelo." };
+  }
 }
 
 /** Every request in flight, answered in one round trip. Next dispatches server
